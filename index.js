@@ -26,7 +26,8 @@ class DbPerfTest {
     {
       name:"Document",
       cosmos:"SELECT c.id_nemo, count(1) as count_switch_fields FROM c join t in c.switch_panels where array_length(t.switch_fields) >= 2 and c.asset_type = 'secondary_substation' group by c.id_nemo",
-      arango:'for sec in secondary_substation COLLECT id_nemo = sec.id_nemo , switch_fields = COUNT_DISTINCT(sec.switch_panels[*].switch_fields[*]) filter switch_fields >=2 Limit 30 RETURN {"id_nemo": id_nemo, "count_switch_fields": switch_fields}'
+      //arango:'for sec in secondary_substation COLLECT id_nemo = sec.id_nemo , switch_fields = COUNT_DISTINCT(sec.switch_panels[*].switch_fields[*]) filter switch_fields >=2 Limit 30 RETURN {"id_nemo": id_nemo, "count_switch_fields": switch_fields}'
+      arango:'for sec in secondary_substation COLLECT id_nemo = sec.id_nemo , switch_fields = COUNT_DISTINCT(FLATTEN(sec.switch_panels[*].switch_fields)) filter switch_fields >=2 Limit 30 RETURN {"id_nemo": id_nemo, "count_switch_fields": switch_fields}'
     },
     {
       name:"Geo",
@@ -40,8 +41,10 @@ class DbPerfTest {
     },
     {
       name:"Graph Query", 
-      gremlin:"g.V().hasLabel('secondary_substation').has('_id', within('secondary_substation/4d9c5f5097ff2ac9b615c12d9d0e2c06b6c6c269','secondary_substation/8d94e7559358e4cbef7ce700fd24ae23ca78149e')).inE().outV().out().has('asset_type', within('lv_cable', 'lv_overheadline','secondary_substation','lv_switch','lv_joint','cabinet','terminal_point','service_connection')).values('_id')",
-      arango:'LET LV =  ["lv_cable", "lv_overheadline", "secondary_substation","lv_switch", "lv_joint", "cabinet", "terminal_point", "service_connection"] for s in secondary_substation Filter s._id in ["secondary_substation/4d9c5f5097ff2ac9b615c12d9d0e2c06b6c6c269", "secondary_substation/8d94e7559358e4cbef7ce700fd24ae23ca78149e"] for w, ee, pp in 1..1 ANY s._id Graph relation for v,e,p in 0..100 ANY w._id Graph relation Prune v.asset_type in ["terminal_point", "secondary_substation"] OPTIONS {uniqueVertices: "global", bfs: true} FILTER (p.vertices[*].asset_type all in LV ) RETURN v._id'
+      //gremlin:"g.V().hasLabel('secondary_substation').has('_id', within('secondary_substation/4d9c5f5097ff2ac9b615c12d9d0e2c06b6c6c269','secondary_substation/8d94e7559358e4cbef7ce700fd24ae23ca78149e')).inE().outV().out().has('asset_type', within('lv_cable', 'lv_overheadline','secondary_substation','lv_switch','lv_joint','cabinet','terminal_point','service_connection')).values('_id')",
+      gremlin:"g.V().has('_id', within('secondary_substation/0233521a4c400a2b8492e97ec840082872f96df7', 'secondary_substation/03639a8512bb0bc343b6101ee8607f3f257dddbe')).both('relation').emit().repeat(both('relation').simplePath().has('asset_type', within('lv_cable', 'lv_overheadline','secondary_substation','lv_switch','lv_joint','cabinet','terminal_point','service_connection'))).until(has('asset_type', within('terminal_point', 'secondary_substation')).or().loops().is(31)).values('_id')",
+      //arango:'LET LV =  ["lv_cable", "lv_overheadline", "secondary_substation","lv_switch", "lv_joint", "cabinet", "terminal_point", "service_connection"] for s in secondary_substation Filter s._id in ["secondary_substation/4d9c5f5097ff2ac9b615c12d9d0e2c06b6c6c269", "secondary_substation/8d94e7559358e4cbef7ce700fd24ae23ca78149e"] for w, ee, pp in 1..1 ANY s._id Graph relation for v,e,p in 0..100 ANY w._id Graph relation Prune v.asset_type in ["terminal_point", "secondary_substation"] OPTIONS {uniqueVertices: "global", bfs: true} FILTER (p.vertices[*].asset_type all in LV ) RETURN v._id'
+      arango:'LET LV =  ["lv_cable", "lv_overheadline", "secondary_substation","lv_switch", "lv_joint", "cabinet", "terminal_point", "service_connection"] for s in secondary_substation Filter s._id in ["secondary_substation/0233521a4c400a2b8492e97ec840082872f96df7", "secondary_substation/03639a8512bb0bc343b6101ee8607f3f257dddbe"] for w, ee, pp in 1..1 ANY s._id Graph relation for v,e,p in 0..100 ANY w._id Graph relation Prune v.asset_type in ["terminal_point", "secondary_substation"] OPTIONS {uniqueVertices: "global", bfs: true} FILTER (p.vertices[*].asset_type all in LV ) RETURN v._id'
     },
   ];
 
@@ -91,6 +94,20 @@ class DbPerfTest {
      
   }
 
+  async testGraph() {
+    console.log("init");
+    await this.init();
+    console.log("running test queries");
+    let res = null;
+    try {
+      res = await this.runTestQuery("cosmos", this.testQueries[3]);
+      console.log("res=" + JSON.stringify(res, null, 2));
+    }
+    catch(e) {
+      console.log(e);
+    }
+  }
+  
   async test() {
     console.log("init");
     await this.init();
@@ -98,7 +115,7 @@ class DbPerfTest {
     let gres = {};
     for(let dbms of ['cosmos', 'arango']) {
     //for(let dbms of ['arango']) {
-      for(let exponent = 0; exponent < 1; exponent++) {
+      for(let exponent = 0; exponent < 7; exponent++) {
         let parallelism = Math.pow(2,exponent);
         console.log("testing parallelism " + parallelism);
         for(let tq of this.testQueries) {
@@ -220,6 +237,7 @@ async function runTest() {
   let config = {}
 
   config.gremlinEndpoint = "wss://"+ process.env.GREMLIN_DATABASE_ACCOUNT_NAME + ".gremlin.cosmos.azure.com:443/gremlin";
+  //config.gremlinEndpoint = "wss://"+ process.env.GREMLIN_DATABASE_ACCOUNT_NAME + ".gremlin.cosmos.azure.com:443/";
   config.gremlinPrimaryKey = process.env.GREMLIN_PRIMARY_KEY;
   config.endpoint = "https://"+process.env.DATABASE_ACCOUNT_NAME + ".documents.azure.com:443/";
   config.primaryKey = process.env.PRIMARY_KEY;
@@ -227,5 +245,6 @@ async function runTest() {
   config.collection = "nemo"
   let pt = new DbPerfTest(config);
   await pt.test();
+  //await pt.testGraph();
   process.exit(0);
 }

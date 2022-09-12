@@ -1,0 +1,21 @@
+#one time to get kubectl connected
+az login
+az account set --subscription ed1b7457-912f-4e78-8dbe-ce334eacdbfd
+az aks get-credentials --resource-group K8S_WEU_DEV_3.0_2 --name aks-mgt-k8s-wind
+
+#each time
+#pick key for arango from dev keyvault https://portal.azure.com/#@EonOS.onmicrosoft.com/resource/subscriptions/a6347bf2-062f-4be1-88a0-76bfd156c1bb/resourceGroups/rg-misc-test1-dev/providers/Microsoft.KeyVault/vaults/kv-ipen-test1-dev/overview
+#https://portal.azure.com/#view/Microsoft_Azure_KeyVault/ListObjectVersionsRBACBlade/~/overview/objectType/secrets/objectId/https%3A%2F%2Fkv-ipen-test1-dev.vault.azure.net%2Fsecrets%2FARANGO-TEST1-RO-USER-PASSWORD/vaultResourceUri/%2Fsubscriptions%2Fa6347bf2-062f-4be1-88a0-76bfd156c1bb%2FresourceGroups%2Frg-misc-test1-dev%2Fproviders%2FMicrosoft.KeyVault%2Fvaults%2Fkv-ipen-test1-dev/vaultId/%2Fsubscriptions%2Fa6347bf2-062f-4be1-88a0-76bfd156c1bb%2FresourceGroups%2Frg-misc-test1-dev%2Fproviders%2FMicrosoft.KeyVault%2Fvaults%2Fkv-ipen-test1-dev
+# ARANGO-TEST1-RO-USER-PASSWORD
+# ARANGO-TEST1-RO-USER-NAME
+export ARANGO_USER=test1_ro
+export ARANGO_SECRET=<key from dev keyvault>
+
+# pick cosmos db primary key from https://portal.azure.com/#@EonOS.onmicrosoft.com/resource/subscriptions/a6347bf2-062f-4be1-88a0-76bfd156c1bb/resourceGroups/rg-testGH/providers/Microsoft.DocumentDb/databaseAccounts/nemo/keys
+# Schlüssel / Primärschlüssel
+export DATABASE_ACCOUNT_NAME=nemo
+export PRIMARY_KEY=<key from rg-testGH/nemo>
+
+#gridgraphhttps://portal.azure.com/#@EonOS.onmicrosoft.com/resource/subscriptions/a6347bf2-062f-4be1-88a0-76bfd156c1bb/resourceGroups/rg-testGH/providers/Microsoft.DocumentDb/databaseAccounts/gridgraph/keys
+export GREMLIN_DATABASE_ACCOUNT_NAME=<name from azure portal>
+export GREMLIN_PRIMARY_KEY=<key from azure resource>
